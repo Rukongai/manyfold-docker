@@ -27,7 +27,7 @@ file_env() {
 
 isLikelyManyfold=
 case "$1" in
-	rails | rake | foreman | passenger ) isLikelyManyfold=1 ;;
+	rails | rake | foreman ) isLikelyManyfold=1 ;;
 esac
 
 _fix_permissions() {
@@ -54,26 +54,13 @@ fi
 if [ -n "$isLikelyManyfold" ]; then
 	_fix_permissions
 	if [ ! -f './config/database.yml' ]; then
-		file_env 'MANYFOLD_DB_MYSQL'
 		file_env 'MANYFOLD_DB_POSTGRES'
-		file_env 'MANYFOLD_DB_SQLSERVER'
-		if [ "$MYSQL_PORT_3306_TCP" ] && [ -z "$MANYFOLD_DB_MYSQL" ]; then
-			export MANYFOLD_DB_MYSQL='mysql'
-			echo "setting mysql"
-		elif [ "$POSTGRES_PORT_5432_TCP" ] && [ -z "$MANYFOLD_DB_POSTGRES" ]; then
+		if [ "$POSTGRES_PORT_5432_TCP" ] && [ -z "$MANYFOLD_DB_POSTGRES" ]; then
 			export MANYFOLD_DB_POSTGRES='postgres'
 			echo "setting postgres"
 		fi
 
-		if [ "$MANYFOLD_DB_MYSQL" ]; then
-			adapter='mysql2'
-			host="$MANYFOLD_DB_MYSQL"
-			file_env 'MANYFOLD_DB_PORT' '3306'
-			file_env 'MANYFOLD_DB_USERNAME' "${MYSQL_ENV_MYSQL_USER:-root}"
-			file_env 'MANYFOLD_DB_PASSWORD' "${MYSQL_ENV_MYSQL_PASSWORD:-${MYSQL_ENV_MYSQL_ROOT_PASSWORD:-}}"
-			file_env 'MANYFOLD_DB_DATABASE' "${MYSQL_ENV_MYSQL_DATABASE:-${MYSQL_ENV_MYSQL_USER:-manyfold}}"
-			file_env 'MANYFOLD_DB_ENCODING' ''
-		elif [ "$MANYFOLD_DB_POSTGRES" ]; then
+		if [ "$MANYFOLD_DB_POSTGRES" ]; then
 			adapter='postgresql'
 			host="$MANYFOLD_DB_POSTGRES"
 			file_env 'MANYFOLD_DB_PORT' '5432'
@@ -81,18 +68,9 @@ if [ -n "$isLikelyManyfold" ]; then
 			file_env 'MANYFOLD_DB_PASSWORD' "${POSTGRES_ENV_POSTGRES_PASSWORD}"
 			file_env 'MANYFOLD_DB_DATABASE' "${POSTGRES_ENV_POSTGRES_DB:-${MANYFOLD_DB_USERNAME:-}}"
 			file_env 'MANYFOLD_DB_ENCODING' 'utf8'
-		elif [ "$MANYFOLD_DB_SQLSERVER" ]; then
-			echo "setting sqlserver"
-			adapter='sqlserver'
-			host="$MANYFOLD_DB_SQLSERVER"
-			file_env 'MANYFOLD_DB_PORT' '1433'
-			file_env 'MANYFOLD_DB_USERNAME' ''
-			file_env 'MANYFOLD_DB_PASSWORD' ''
-			file_env 'MANYFOLD_DB_DATABASE' ''
-			file_env 'MANYFOLD_DB_ENCODING' ''
 		else
 			echo >&2
-			echo >&2 'warning: missing MANYFOLD_DB_MYSQL, MANYFOLD_DB_POSTGRES, or MANYFOLD_DB_SQLSERVER environment variables'
+			echo >&2 'warning: missing MANYFOLD_DB_POSTGRES environment variables'
 			echo >&2
 			echo >&2 '*** Using sqlite3 as fallback. ***'
 			echo >&2
@@ -157,11 +135,6 @@ if [ -n "$isLikelyManyfold" ]; then
 
 	# remove PID file to enable restarting the container
 	rm -f tmp/pids/server.pid
-
-	if [ "$1" = 'passenger' ]; then
-		# Don't fear the reaper.
-		set -- tini -- "$@"
-	fi
 fi
 echo "entrypoint end"
 exec "$@"
